@@ -1,0 +1,200 @@
+---
+title: "AdriftLab_AbruptChange"
+author: "Alix de Jersey"
+date: "2026-05-12"
+output: html_document
+---
+
+
+# ========================================================================================================================
+Abrupt Change Analysis
+
+Creates figures for Abrupt recent increases in plastic ingestion by Sable Shearwaters (Ardenna carneipes)
+
+Authors: Jennifer L. Lavers, Alix M. de Jersey, Jack Rivers-Auty, Alexander L. Bond
+
+# ========================================================================================================================
+
+```{r}
+# -------------------------
+# Load packages
+# -------------------------
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+```{r}
+# -------------------------
+# Load data
+# -------------------------
+
+abrupt_change <- read_csv("C:/Users/ampde/OneDrive - University of Tasmania/PhD/00 Projects/Shifting baseline/GitHub/Abrupt_Change_data.csv")
+abrupt_change <- read_csv("Abrupt_Change_data.csv")
+
+# Expected columns:
+# Year
+# BirdID
+# PlasMassTOT
+# PlasNumTOT
+# Lids
+# Nur
+
+# -------------------------
+# Basic data checks
+# -------------------------
+
+required_cols <- c(
+  "Year",
+  "BirdID",
+  "PlasMassTOT",
+  "PlasNumTOT",
+  "Lids",
+  "Nur"
+)
+
+missing_cols <- setdiff(required_cols, names(abrupt_change))
+
+if (length(missing_cols) > 0) {
+  stop(
+    "The following required columns are missing: ",
+    paste(missing_cols, collapse = ", ")
+  )
+}
+
+abrupt_change <- abrupt_change %>%
+  mutate(
+    Year = as.numeric(Year),
+    PlasMassTOT = as.numeric(PlasMassTOT),
+    PlasNumTOT = as.numeric(PlasNumTOT),
+    Lids = as.numeric(Lids),
+    Nur = as.numeric(Nur)
+  )
+
+# -------------------------
+# Figure 1: Plastic mass and count by year
+# -------------------------
+
+mass_range <- range(abrupt_change$PlasMassTOT, na.rm = TRUE)
+num_range <- range(abrupt_change$PlasNumTOT, na.rm = TRUE)
+
+scale_factor <- diff(mass_range) / diff(num_range)
+
+df_long_num_mass <- abrupt_change %>%
+  mutate(
+    PlasNum_scaled = PlasNumTOT * scale_factor
+  ) %>%
+  pivot_longer(
+    cols = c(PlasMassTOT, PlasNum_scaled),
+    names_to = "Metric",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Metric = case_when(
+      Metric == "PlasMassTOT" ~ "Mass",
+      Metric == "PlasNum_scaled" ~ "Number",
+      TRUE ~ Metric
+    )
+  )
+
+fig1 <- ggplot(
+  df_long_num_mass,
+  aes(x = factor(Year), y = Value, fill = Metric)
+) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  scale_fill_manual(
+    values = c(
+      "Mass" = "#56b4e9",
+      "Number" = "#009e73"
+    )
+  ) +
+  scale_y_continuous(
+    name = "Plastic mass (g)",
+    limits = c(0, NA),
+    expand = expansion(mult = c(0, 0.05)),
+    sec.axis = sec_axis(
+      ~ . / scale_factor,
+      name = "Plastic count"
+    )
+  ) +
+  labs(
+    title = "Plastic mass and count by year",
+    x = "Year",
+    fill = "Metric"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8
+    ),
+    plot.background = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8
+    )
+  )
+
+fig1
+
+# -------------------------
+# Figure 2: Lids and nurdles by year
+# -------------------------
+
+df_long_lids_nurdles <- abrupt_change %>%
+  pivot_longer(
+    cols = c(Lids, Nur),
+    names_to = "Metric",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Metric = case_when(
+      Metric == "Lids" ~ "Lids",
+      Metric == "Nur" ~ "Nurdles",
+      TRUE ~ Metric
+    )
+  )
+
+fig2 <- ggplot(
+  df_long_lids_nurdles,
+  aes(x = factor(Year), y = Value, fill = Metric)
+) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  scale_fill_manual(
+    values = c(
+      "Lids" = "#EB6123",
+      "Nurdles" = "#512888"
+    )
+  ) +
+  scale_y_continuous(
+    name = "Count",
+    limits = c(0, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Lids and nurdles by year",
+    x = "Year",
+    fill = "Item type"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8
+    ),
+    plot.background = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8
+    )
+  )
+
+fig2
+```
+
